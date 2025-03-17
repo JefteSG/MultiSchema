@@ -1,0 +1,1 @@
+from .link_routes import user_bp

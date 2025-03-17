@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb_container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mydatabase
+      MYSQL_USER: flask_user
+      MYSQL_PASSWORD: flask_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  app:
+    build: .
+    container_name: flask_app
+    restart: always
+    depends_on:
+      - mariadb
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/backend
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: development
+      DATABASE_URL: "mysql+pymysql://flask_user:flask_password@mariadb/mydatabase"
+    command: >
+      sh -c "sleep 10 &&
+      if [ ! -d 'migrations' ]; then flask db init; fi &&
+      flask db migrate -m 'Initial migration' &&
+      flask db upgrade &&
+      flask run --host=0.0.0.0 --port=5000"
+
+
+volumes:
+  mariadb_data:
