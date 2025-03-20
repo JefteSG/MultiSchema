@@ -108,6 +108,8 @@ def create_site(site_name):
     except Exception as e:
         # click.echo(f"Erro ao salvar a configuração do site: {e}")
         return
+    
+    return "Site criado com sucesso!"
 
     # click.echo(f"Site '{site_name}' criado com sucesso!")
     
