@@ -81,7 +81,7 @@ def create_site(site_name):
             conn.commit()
     except Exception as e:
         # click.echo(f"Erro ao criar o banco ou o usuário: {e}")
-        return
+        return {"error": str(e)}
 
     try:
         engine_new = create_engine(new_db_url)
@@ -89,7 +89,7 @@ def create_site(site_name):
             db.metadata.create_all(engine_new)
     except Exception as e:
         # click.echo(f"Erro ao criar as tabelas: {e}")
-        return
+        return {"error": str(e)}
 
     site_config = {
         "site_name": site_name,
@@ -107,7 +107,7 @@ def create_site(site_name):
             json.dump(site_config, config_file, indent=4)
     except Exception as e:
         # click.echo(f"Erro ao salvar a configuração do site: {e}")
-        return
+        return {"error": str(e)}
     
     return site_config
 
