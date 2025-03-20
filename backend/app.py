@@ -68,7 +68,7 @@ def create_site(site_name):
 
     new_db_password = secrets.token_hex(8)
     random_suffix = secrets.token_hex(4)
-    new_db_username = click.prompt("New DB user [user_<random_suffix>]:", type=str, default=f"user_{random_suffix}")
+    new_db_username = f"user_{random_suffix}"
     new_db_name = f"db_{random_suffix}"
     new_db_url = f"mysql+pymysql://{new_db_username}:{new_db_password}@localhost/{new_db_name}"
 
