@@ -109,7 +109,7 @@ def create_site(site_name):
         # click.echo(f"Erro ao salvar a configuração do site: {e}")
         return
     
-    return "Site criado com sucesso!"
+    return site_config
 
     # click.echo(f"Site '{site_name}' criado com sucesso!")
     
