@@ -26,8 +26,10 @@ def create_app():
     app = Flask(__name__)
 
     # Configurações do banco de dados e SQLAlchemy
+    app.instance_path = "/tmp/flask_instance"
+    os.makedirs(app.instance_path, exist_ok=True)
     try:
-        app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///sites/master.db" # FIXME: reafatorar para pegar do arquivo de configuração
+        app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(app.instance_path, "database.db") # FIXME: reafatorar para pegar do arquivo de configuração
     except Exception as e:
         raise Exception("Erro ao buscar configuração do banco de dados, voce deve configurar o banco com o comando \"flask init\"")
     app.config['SQLALCHEMY_ECHO'] = True
