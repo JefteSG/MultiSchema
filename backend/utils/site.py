@@ -9,6 +9,9 @@ def get_base_path():
 
 def get_list_sites():
     sites_dir = os.path.join(get_base_path(), 'sites')
+    print(f"Checking if {sites_dir} exists: {os.path.exists(sites_dir)}")
+    if not os.path.exists(sites_dir):
+        return []
     sites = [f for f in os.listdir(sites_dir) if os.path.isdir(os.path.join(sites_dir, f))]
     return sites
 
