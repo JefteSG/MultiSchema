@@ -2,7 +2,7 @@ from flask import g, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
-from ..utils.site import get_db_url
+from ..utils.site import get_db_url, get_exists_site
 from ..models.user import setup_db
 
 db = SQLAlchemy()
@@ -13,7 +13,8 @@ def get_db_connection():
     host = request.headers.get("Host") 
     # retirar portas
     host = host.split(':')[0]
-
+    if not get_exists_site(host):
+        return None
     db_url = get_db_url(host)
     if not db_url:
         return None

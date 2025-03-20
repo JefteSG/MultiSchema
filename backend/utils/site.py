@@ -12,6 +12,9 @@ def get_list_sites():
     sites = [f for f in os.listdir(sites_dir) if os.path.isdir(os.path.join(sites_dir, f))]
     return sites
 
+def get_exists_site(site_name):
+    return site_name in get_list_sites()
+
 def get_db_url(site_name):
     try:
         if site_name not in get_list_sites():

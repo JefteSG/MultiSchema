@@ -54,17 +54,15 @@ def create_app():
 app = create_app()
 migrate = Migrate(app, db)
 
-@app.cli.command("new-site")
-@with_appcontext
-@click.argument("site_name")
+@app.route("/create-site/<site_name>", methods=["POST"])
 def create_site(site_name):
     """
     Cria um novo site com um banco de dados exclusivo.
     Solicita as credenciais do DB master e o usuário para o novo banco.
     """
-    master_user = click.prompt("DB user [root]:", type=str, default="root")
-    master_password = click.prompt("DB password:", hide_input=True)
-    master_db_url = f"mysql+pymysql://{master_user}:{master_password}@localhost"
+    # master_user = click.prompt("DB user [root]:", type=str, default="root")
+    # master_password = click.prompt("DB password:", hide_input=True)
+    master_db_url = f"sqlite:///{os.path.join(get_base_path(), 'sites', 'master.db')}"
 
     new_db_password = secrets.token_hex(8)
     random_suffix = secrets.token_hex(4)
@@ -80,7 +78,7 @@ def create_site(site_name):
             conn.execute(text(f"GRANT ALL PRIVILEGES ON {new_db_name}.* TO '{new_db_username}'@'localhost'"))
             conn.commit()
     except Exception as e:
-        click.echo(f"Erro ao criar o banco ou o usuário: {e}")
+        # click.echo(f"Erro ao criar o banco ou o usuário: {e}")
         return
 
     try:
@@ -88,7 +86,7 @@ def create_site(site_name):
         with engine_new.connect() as conn:
             db.metadata.create_all(engine_new)
     except Exception as e:
-        click.echo(f"Erro ao criar as tabelas: {e}")
+        # click.echo(f"Erro ao criar as tabelas: {e}")
         return
 
     site_config = {
@@ -106,10 +104,10 @@ def create_site(site_name):
         with open(config_path, "w") as config_file:
             json.dump(site_config, config_file, indent=4)
     except Exception as e:
-        click.echo(f"Erro ao salvar a configuração do site: {e}")
+        # click.echo(f"Erro ao salvar a configuração do site: {e}")
         return
 
-    click.echo(f"Site '{site_name}' criado com sucesso!")
+    # click.echo(f"Site '{site_name}' criado com sucesso!")
     
 @app.cli.command("init")
 @with_appcontext
