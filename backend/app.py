@@ -6,7 +6,7 @@ from flask import Flask, g
 from flask.cli import with_appcontext
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, MetaData
 
 from .routes import user_bp
 from .routes.redirect_site import before_request, disconnect_db
@@ -16,6 +16,7 @@ from jinja2 import Environment, FileSystemLoader
 TEMPLATE_FILE = "nginx-template.conf.j2"
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 OUTPUT_FILE = "nginx.conf"
 
@@ -59,57 +60,38 @@ migrate = Migrate(app, db)
 @app.route("/create-site/<site_name>", methods=["POST"])
 def create_site(site_name):
     """
-    Cria um novo site com um banco de dados exclusivo.
-    Solicita as credenciais do DB master e o usuário para o novo banco.
+    Cria um novo site com um banco de dados exclusivo usando SQLite.
     """
-    # master_user = click.prompt("DB user [root]:", type=str, default="root")
-    # master_password = click.prompt("DB password:", hide_input=True)
-    print(os.path.getcwd())
-    master_db_url = f"sqlite:///{os.path.join(get_base_path(), 'sites', 'master.db')}"
+    site_folder = os.path.join(BASE_DIR, "sites", site_name)
+    os.makedirs(site_folder, exist_ok=True)  # Cria a pasta do site, se não existir
 
-    new_db_password = secrets.token_hex(8)
-    random_suffix = secrets.token_hex(4)
-    new_db_username = f"user_{random_suffix}"
-    new_db_name = f"db_{random_suffix}"
-    new_db_url = f"mysql+pymysql://{new_db_username}:{new_db_password}@localhost/{new_db_name}"
+    # Definição do caminho do banco SQLite
+    new_db_path = os.path.join(site_folder, "database.db")
+    new_db_url = f"sqlite:///{new_db_path}"
 
     try:
-        engine_master = create_engine(master_db_url)
-        with engine_master.connect() as conn:
-            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {new_db_name}"))
-            conn.execute(text(f"CREATE USER IF NOT EXISTS '{new_db_username}'@'localhost' IDENTIFIED BY '{new_db_password}'"))
-            conn.execute(text(f"GRANT ALL PRIVILEGES ON {new_db_name}.* TO '{new_db_username}'@'localhost'"))
-            conn.commit()
-    except Exception as e:
-        # click.echo(f"Erro ao criar o banco ou o usuário: {e}")
-        return {"error": str(e)}
-
-    try:
+        # Criando o banco de dados SQLite
         engine_new = create_engine(new_db_url)
-        with engine_new.connect() as conn:
-            db.metadata.create_all(engine_new)
+        metadata = MetaData()
+        metadata.create_all(engine_new)  # Garante que as tabelas sejam criadas
     except Exception as e:
-        # click.echo(f"Erro ao criar as tabelas: {e}")
-        return {"error": str(e)}
+        return {"error": f"Erro ao criar as tabelas: {str(e)}"}
 
+    # Configuração do site
     site_config = {
         "site_name": site_name,
-        "db_name": new_db_name,
-        "db_username": new_db_username,
-        "db_password": new_db_password,
+        "db_path": new_db_path,
         "db_url": new_db_url,
     }
 
-    site_folder = os.path.join("sites", site_name)
     try:
-        os.makedirs(site_folder, exist_ok=True)
+        # Salvando as configurações em um arquivo JSON
         config_path = os.path.join(site_folder, "site_config.json")
         with open(config_path, "w") as config_file:
             json.dump(site_config, config_file, indent=4)
     except Exception as e:
-        # click.echo(f"Erro ao salvar a configuração do site: {e}")
-        return {"error": str(e)}
-    
+        return {"error": f"Erro ao salvar a configuração do site: {str(e)}"}
+
     return site_config
 
     # click.echo(f"Site '{site_name}' criado com sucesso!")
