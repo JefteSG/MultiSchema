@@ -16,7 +16,7 @@ from jinja2 import Environment, FileSystemLoader
 TEMPLATE_FILE = "nginx-template.conf.j2"
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = "/tmp/sites" 
 
 OUTPUT_FILE = "nginx.conf"
 
