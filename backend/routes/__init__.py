@@ -1,1 +1,1 @@
-from .link_routes import user_bp
+from .users_routes import user_bp
