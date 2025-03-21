@@ -64,6 +64,7 @@ def create_site(site_name):
     """
     # master_user = click.prompt("DB user [root]:", type=str, default="root")
     # master_password = click.prompt("DB password:", hide_input=True)
+    print(os.path.getcwd())
     master_db_url = f"sqlite:///{os.path.join(get_base_path(), 'sites', 'master.db')}"
 
     new_db_password = secrets.token_hex(8)
