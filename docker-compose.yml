@@ -2,40 +2,59 @@ version: '3.8'
 
 services:
   mariadb:
-    image: mariadb:latest
+    image: mariadb:10.11
     container_name: mariadb_container
-    restart: always
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: mydatabase
+      MYSQL_DATABASE: multischema
       MYSQL_USER: flask_user
       MYSQL_PASSWORD: flask_password
     ports:
       - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   app:
-    build: .
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: flask_app
-    restart: always
+    restart: unless-stopped
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
     ports:
       - "5000:5000"
     volumes:
-      - .:/backend
+      - ./backend:/app
+      - sites_data:/app/sites
+      - instance_data:/tmp/flask_instance
     environment:
       FLASK_APP: app.py
       FLASK_ENV: development
-      DATABASE_URL: "mysql+pymysql://flask_user:flask_password@mariadb/mydatabase"
+      DATABASE_URL: "mysql+pymysql://flask_user:flask_password@mariadb/multischema"
+      SECRET_KEY: "dev-secret-key-change-in-production"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:8080"
     command: >
-      sh -c "sleep 10 &&
+      sh -c "sleep 15 &&
       if [ ! -d 'migrations' ]; then flask db init; fi &&
       flask db migrate -m 'Initial migration' &&
       flask db upgrade &&
       flask run --host=0.0.0.0 --port=5000"
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/user/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   mariadb_data:
+  sites_data:
+  instance_data:
