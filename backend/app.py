@@ -5,10 +5,13 @@ import click
 from flask import Flask, g
 from flask.cli import with_appcontext
 from flask_migrate import Migrate
-from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 from sqlalchemy import create_engine, text, MetaData
 
+from .database import db
+from .config_manager import get_config
 from .routes import user_bp
+from .routes.sites_routes import sites_bp
 from .routes.redirect_site import before_request, disconnect_db
 from .utils.site import get_base_path, get_config_db_root, get_list_sites
 from jinja2 import Environment, FileSystemLoader
@@ -20,37 +23,41 @@ BASE_DIR = "/tmp/sites"
 
 OUTPUT_FILE = "nginx.conf"
 
-# Instância global do SQLAlchemy
-db = SQLAlchemy()
-
-def create_app():
+def create_app(config_name=None):
     app = Flask(__name__)
-
-    # Configurações do banco de dados e SQLAlchemy
-    app.instance_path = "/tmp/flask_instance"
-    os.makedirs(app.instance_path, exist_ok=True)
-    try:
-        app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///" + os.path.join(app.instance_path, "database.db") # FIXME: reafatorar para pegar do arquivo de configuração
-    except Exception as e:
-        raise Exception("Erro ao buscar configuração do banco de dados, voce deve configurar o banco com o comando \"flask init\"")
-    app.config['SQLALCHEMY_ECHO'] = True
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        "pool_pre_ping": True,
-        "pool_recycle": 300,
-    }
-
-    # Inicializa o SQLAlchemy
+    
+    # Carrega configuração
+    config = get_config(config_name)
+    app.config.from_object(config)
+    
+    # Configurações do banco de dados
+    app.config['SQLALCHEMY_DATABASE_URI'] = config.get_database_url()
+    
+    # Configurar CORS
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:3000", "http://localhost:8080"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+    
+    # Inicializa extensões
     db.init_app(app)
-
+    
+    # Inicializa Flask-Migrate
+    migrate = Migrate(app, db)
+    
+    # Importa modelos para que o Flask-Migrate os encontre
+    from .models.user import User, Role
+    
     # Middleware para gerenciar sessões
     app.before_request(before_request)
-    
-
     app.teardown_appcontext(disconnect_db)
     
     # Registra os blueprints
     app.register_blueprint(user_bp)
+    app.register_blueprint(sites_bp)
     
     return app
 
@@ -99,18 +106,15 @@ def create_site(site_name):
 @app.cli.command("init")
 @with_appcontext
 def init_instancia():
+    """Inicializa a configuração do banco de dados"""
+    from .config_manager import Config
+    
     master_user = click.prompt("DB user [root]:", type=str, default="root")
     master_password = click.prompt("DB password:", hide_input=True)
     master_db_url = f"mysql+pymysql://{master_user}:{master_password}@localhost"
 
-    # coloca as configs na pasta sites/config.json chave dv_url
-    # não precisa criar o banco, ele vai ser criado na primeira requisição
-    config_path = os.path.join('.',"sites", "config.json")
-    config = {
-        "db_url": master_db_url
-    }
-    with open(config_path, "w") as config_file:
-        json.dump(config, config_file, indent=4)@app.cli.command('setup-nginx')
+    # Salva as configurações
+    Config.save_database_config(master_db_url)
     click.echo("Configuração inicializada com sucesso!")
 
 
